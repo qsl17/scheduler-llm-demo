@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "module": "ESNext", // Enables top-level await
+    "target": "ES2022", // Or higher; required for top-level await
+    "moduleResolution": "node",
+    "jsx": "react-jsx",
+    "strict": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true
+  }
+}

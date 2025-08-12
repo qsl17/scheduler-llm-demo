@@ -1,0 +1,44 @@
+# Node
+node_modules/
+dist/
+build/
+.env
+.env.*
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# VSCode
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# TypeScript
+*.tsbuildinfo
+
+# Misc
+*.log
+*.tmp
+*.swp
+
+# ollama
+ollama-models/
+ollama-cache/
+
+# Coverage
+coverage/
+
+# IDE
+.idea/
+*.iml
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Test
+*.test-results.json
