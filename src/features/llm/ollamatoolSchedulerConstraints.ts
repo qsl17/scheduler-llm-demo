@@ -4,9 +4,17 @@ import { defaultConstraintSettings } from "./constraints";
 import { ManpowerControllerService } from "../../api/manpower/services/ManpowerControllerService";
 import { EventAssignmentControllerService } from "../../api/optaplanner/services/EventAssignmentControllerService";
 import ollama from "ollama";
+import { EventAssignmentSolution } from "../../api/optaplanner/models/EventAssignmentSolution";
 
 // --- Constraint reference (mutable) ---
-const constraintSettings = { ...defaultConstraintSettings };
+const constraintSettings: {
+  roleMatchWeight: string;
+  noOverlapWeight: string;
+  noBackToBackWeight: string;
+  balanceWeight: string;
+  affinityGroupOverlapWeight?: string;
+  aversionGroupOverlapWeight?: string;
+} = { ...defaultConstraintSettings };
 
 // --- Tool definitions ---
 const setRoleMatchWeightTool = {
@@ -84,6 +92,44 @@ const setBalanceWeightTool = {
   },
 };
 
+const setAffinityGroupOverlapWeightTool = {
+  type: "function",
+  function: {
+    name: "setAffinityGroupOverlapWeight",
+    description:
+      "Set the weight for affinity group overlap constraint (e.g. '0hard/0soft')",
+    parameters: {
+      type: "object",
+      properties: {
+        value: {
+          type: "string",
+          description: "The new weight value (e.g. '0hard/0soft')",
+        },
+      },
+      required: ["value"],
+    },
+  },
+};
+
+const setAversionGroupOverlapWeightTool = {
+  type: "function",
+  function: {
+    name: "setAversionGroupOverlapWeight",
+    description:
+      "Set the weight for aversion group overlap constraint (e.g. '0hard/0soft')",
+    parameters: {
+      type: "object",
+      properties: {
+        value: {
+          type: "string",
+          description: "The new weight value (e.g. '0hard/0soft')",
+        },
+      },
+      required: ["value"],
+    },
+  },
+};
+
 const solveSchedulerTool = {
   type: "function",
   function: {
@@ -115,6 +161,18 @@ const availableFunctions = {
     constraintSettings.balanceWeight = value;
     return { balanceWeight: constraintSettings.balanceWeight };
   },
+  setAffinityGroupOverlapWeight: ({ value }: { value: string }) => {
+    constraintSettings.affinityGroupOverlapWeight = value;
+    return {
+      affinityGroupOverlapWeight: constraintSettings.affinityGroupOverlapWeight,
+    };
+  },
+  setAversionGroupOverlapWeight: ({ value }: { value: string }) => {
+    constraintSettings.aversionGroupOverlapWeight = value;
+    return {
+      aversionGroupOverlapWeight: constraintSettings.aversionGroupOverlapWeight,
+    };
+  },
   solveScheduler: async () => {
     const manpower = await ManpowerControllerService.getAll();
     const personList = manpower.map((mp: any, idx: number) => ({
@@ -135,6 +193,7 @@ const availableFunctions = {
 
 // --- Assignment list reference (module-level, not globalThis) ---
 let assignmentListCache: any[] = [];
+let output: EventAssignmentSolution;
 
 // --- LLM agent function ---
 export async function optimizeSchedulerWithLLMConstraints(
@@ -144,14 +203,12 @@ export async function optimizeSchedulerWithLLMConstraints(
       role: "system",
       content: `You are an LLM agent that can adjust constraint weights for scheduling optimization. 
       Use the provided tools to set constraint weights before solving. 
-      Do not pass values as arguments, always use the tools to set the weights directly. 
+      Do not pass values as arguments, always use the tools to set the weights directly.
+      Weights are strictly in the format 'Xhard/Ysoft' where X and Y are integers. 
       Assume default weights unless specified by the user.
-      Only use the solveScheduler tool when all constraints are set. The solver will end the conversation and return the solution.`,
-    },
-    {
-      role: "user",
-      content:
-        "Please optimize my scheduler. Ensure there are no back-to-back assignments and all constraints are respected. Try to balance the workload as much as possible.",
+      Only use the solveScheduler tool when all constraints are set. The solver will end the conversation and return the solution.
+      Share instead on the constraints that you have set to match their requirements.
+      Use point form to share the constraints that you have set.`,
     },
   ],
   model = "qwen3:8b"
@@ -166,14 +223,19 @@ export async function optimizeSchedulerWithLLMConstraints(
       setNoOverlapWeightTool,
       setNoBackToBackWeightTool,
       setBalanceWeightTool,
+      setAffinityGroupOverlapWeightTool,
+      setAversionGroupOverlapWeightTool,
       solveSchedulerTool,
     ],
   });
   // ...handle tool calls and chain as in your main agent...
 
   console.log("LLM initial response:", response.message.content);
+  console.log("LLM tool calls:", response.message.tool_calls);
+  messages.push(response.message);
 
   if (response.message.tool_calls) {
+    let calledSolve = false;
     for (const tool of response.message.tool_calls) {
       const fnName = tool.function.name as keyof typeof availableFunctions;
       const functionToCall = availableFunctions[fnName];
@@ -181,14 +243,13 @@ export async function optimizeSchedulerWithLLMConstraints(
       console.log("Arguments:", tool.function.arguments);
       if (fnName === "solveScheduler") {
         const { personList, assignmentList } = tool.function.arguments;
-        const output = await functionToCall({ value: "" });
-        messages.push(response.message);
+        output = (await functionToCall({
+          value: "",
+        })) as EventAssignmentSolution;
         messages.push({
           role: "tool",
           content: JSON.stringify(output),
         });
-        console.log("Function output:", output);
-
         // Log tool call and output
         console.log(`LLM called solveScheduler with:`, {
           personList,
@@ -196,20 +257,28 @@ export async function optimizeSchedulerWithLLMConstraints(
         });
         console.log(`Tool output:`, output);
 
+        // messages.push({
+        //   role: "system",
+        //   content: `You have successfully solved the scheduler.
+        //      Inform the user that you have completed the tasks to match their request.
+        //      Do not interpret the result as you do not not understand the solver's output.
+        //      Share instead on the constraints that you have set to match their requirements.
+        //      Use point form to share the constraints that you have set.`,
+        // });
+        // const finalResponse = await ollama.chat({
+        //   model,
+        //   messages,
+        // });
+        // messages.push(finalResponse.message);
         return { output, messages };
       } else if (Object.keys(availableFunctions).includes(fnName)) {
-        console.log("Calling function:", tool.function.name);
-        console.log("Arguments:", tool.function.arguments);
-        const output = functionToCall(
+        const toolOutput = functionToCall(
           tool.function.arguments as { value: string }
         );
-        console.log("Function output:", output);
-
-        // Add the function response to messages for the model to use
-        messages.push(response.message);
+        console.log("Function output:", toolOutput);
         messages.push({
           role: "tool",
-          content: output.toString(),
+          content: toolOutput.toString(),
         });
       } else {
         console.warn(

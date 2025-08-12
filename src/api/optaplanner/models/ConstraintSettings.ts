@@ -8,4 +8,6 @@ export type ConstraintSettings = {
   noOverlapWeight?: string;
   noBackToBackWeight?: string;
   balanceWeight?: string;
+  affinityGroupOverlapWeight?: string;
+  aversionGroupOverlapWeight?: string;
 };

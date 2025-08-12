@@ -14,6 +14,7 @@ import { ManpowerControllerService } from "../../api/manpower/services/ManpowerC
 import { Manpower } from "../../api/manpower/models/Manpower";
 import SolveButton from "./SolveButton";
 import OptimizeButton from "./OptimizeButton";
+import ChatLLM from "./ChatLLM";
 
 const COLUMNS = [{ text: "Name", field: "name", width: 150 }];
 
@@ -105,6 +106,7 @@ const MyScheduler: React.FC = () => {
         onEventClick={onEventClick}
         eventRenderer={eventRenderer}
       />
+      <ChatLLM />
       {popover && (
         <Paper
           elevation={6}

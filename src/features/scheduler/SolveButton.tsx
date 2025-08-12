@@ -44,6 +44,7 @@ const SolveButton: React.FC = () => {
     const payload: EventAssignmentSolution = {
       personList,
       assignmentList,
+      affinityGroups: [["25", "1", "99"]],
     };
     try {
       const solution = await EventAssignmentControllerService.solve(payload);

@@ -11,5 +11,7 @@ export type EventAssignmentSolution = {
     assignmentList?: Array<Assignment>;
     score?: HardSoftScore;
     constraintSettings?: ConstraintSettings;
+    affinityGroups?: Array<Array<string>>;
+    aversionGroups?: Array<Array<string>>;
 };
 
