@@ -13,7 +13,6 @@ import { updateEventName } from "../../stores/event/eventSlice";
 import { ManpowerControllerService } from "../../api/manpower/services/ManpowerControllerService";
 import { Manpower } from "../../api/manpower/models/Manpower";
 import SolveButton from "./SolveButton";
-import OptimizeButton from "./OptimizeButton";
 import ChatLLM from "./ChatLLM";
 
 const COLUMNS = [{ text: "Name", field: "name", width: 150 }];
@@ -108,7 +107,7 @@ const MyScheduler: React.FC = () => {
 
   return (
     <Box sx={{ height: "1000px", position: "relative" }}>
-      <OptimizeButton />
+      {/* <OptimizeButton /> */}
       <SolveButton />
       <BryntumScheduler
         ref={schedulerRef}

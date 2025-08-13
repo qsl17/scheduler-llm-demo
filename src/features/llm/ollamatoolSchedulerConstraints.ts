@@ -329,7 +329,8 @@ export async function optimizeSchedulerWithLLMConstraints(
              Do not interpret the result as you do not not understand the solver's output.
              Share instead on the constraints that you have set to match their requirements.
              Use point form to share the constraints that you have set.
-             The user is not a technical user and expects an explanation of the constraints you have considered in simple terms.`,
+             The user is not a technical user and expects an explanation of the constraints you have considered in simple terms.
+             They do not understand what a hard or soft constraint means. Use layman language to explain`,
             },
           ]),
         });
