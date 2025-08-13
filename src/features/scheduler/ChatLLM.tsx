@@ -11,7 +11,7 @@ import { updateEventName } from "../../stores/event/eventSlice";
 import type { RootState } from "../../stores/store";
 import type { Assignment } from "../../api/optaplanner/models/Assignment";
 
-const ChatLLM: React.FC = () => {
+const ChatLLM = ({ schedulerRef }: { schedulerRef: React.RefObject<any> }) => {
   const events = useSelector((state: RootState) => state.event);
   const resources = useSelector((state: RootState) => state.resource);
   const dispatch = useDispatch();
@@ -19,7 +19,7 @@ const ChatLLM: React.FC = () => {
     []
   );
   const [input, setInput] = useState(
-    "Please optimize my scheduler. Ensure there are no back-to-back assignments and all constraints are respected. Try to balance the workload as much as possible."
+    "Please optimize my scheduler. Ensure no back-to-back assignments."
   );
   const [loading, setLoading] = useState(false);
 
@@ -75,53 +75,54 @@ const ChatLLM: React.FC = () => {
           }
         });
       }
-      // Only show the LLM's final response (not chain of thought/tool call JSON)
-      let llmMessage = "";
-      if (llmResult && typeof llmResult === "object") {
-        if (
-          "output" in llmResult &&
-          llmResult.output &&
-          typeof llmResult.output === "object"
-        ) {
-          // Try to extract a user-friendly message or just show 'Optimization complete.'
-          llmMessage = "Optimization complete.";
-        } else if ("assignmentList" in llmResult) {
-          llmMessage = "Optimization complete.";
-        }
-      }
-      // If the LLM's last message has a <think>...</think> tag, only show the content after the tag
-      let lastMsg: string | undefined = undefined;
-      if (
-        llmResult &&
-        typeof llmResult === "object" &&
-        "messages" in llmResult &&
-        Array.isArray((llmResult as any).messages)
-      ) {
-        const msgs = (llmResult as any).messages;
-        lastMsg = msgs[msgs.length - 1];
-        if (typeof lastMsg === "string" && lastMsg.includes("</think>")) {
-          const afterThink = lastMsg.split("</think>").pop()?.trim();
-          if (afterThink) llmMessage = afterThink;
-        }
-      }
+      // // Only show the LLM's final response (not chain of thought/tool call JSON)
+      // let llmMessage = "";
+      // if (llmResult && typeof llmResult === "object") {
+      //   if (
+      //     "output" in llmResult &&
+      //     llmResult.output &&
+      //     typeof llmResult.output === "object"
+      //   ) {
+      //     // Try to extract a user-friendly message or just show 'Optimization complete.'
+      //     llmMessage = "Optimization complete.";
+      //   } else if ("assignmentList" in llmResult) {
+      //     llmMessage = "Optimization complete.";
+      //   }
+      // }
+      // // If the LLM's last message has a <think>...</think> tag, only show the content after the tag
+      // let lastMsg: string | undefined = undefined;
+      // if (
+      //   llmResult &&
+      //   typeof llmResult === "object" &&
+      //   "messages" in llmResult &&
+      //   Array.isArray((llmResult as any).messages)
+      // ) {
+      //   const msgs = (llmResult as any).messages;
+      //   lastMsg = msgs[msgs.length - 1];
+      //   if (typeof lastMsg === "string" && lastMsg.includes("</think>")) {
+      //     const afterThink = lastMsg.split("</think>").pop()?.trim();
+      //     if (afterThink) llmMessage = afterThink;
+      //   }
+      // }
       setMessages([
-        ...messages,
-        {
-          role: newMessages[newMessages.length - 1].role,
-          content: newMessages[newMessages.length - 1].content,
-          // .split("</think>")[1],
-        },
-        { role: "assistant", content: llmMessage },
+        ...newMessages,
+        // ...messages,
+        // {
+        //   role: newMessages[newMessages.length - 1].role,
+        //   content:
+        //     newMessages[newMessages.length - 1].content.split("</think>")[1],
+        // },
       ]);
     } catch (e) {
       setMessages([
-        ...messages,
-        {
-          role: newMessages[newMessages.length - 1].role,
-          content: newMessages[newMessages.length - 1].content,
-          // .split("</think>")[1],
-        },
-        { role: "assistant", content: `LLM optimization failed: ${e}` },
+        ...newMessages,
+        // ...messages,
+        // {
+        //   role: newMessages[newMessages.length - 1].role,
+        //   content: newMessages[newMessages.length - 1].content,
+        //   // .split("</think>")[1],
+        // },
+        // { role: "assistant", content: `LLM optimization failed: ${e}` },
       ]);
     } finally {
       setInput("");
@@ -152,32 +153,60 @@ const ChatLLM: React.FC = () => {
         LLM Chat
       </Typography>
       <Box sx={{ flex: 1, overflowY: "auto", p: 2 }}>
-        {messages.map((msg, idx) => (
-          <Paper
-            key={idx}
-            sx={{
-              p: 1,
-              mb: 1,
-              fontSize: 18,
-              bgcolor:
-                msg.role === "user"
-                  ? "#e3f2fd"
+        {messages
+          .filter(
+            (msg) =>
+              msg.role === "user" ||
+              (msg.role === "assistant" &&
+                msg.content.split("</think>")[1] &&
+                msg.content.split("</think>")[1].trim().length > 0)
+          )
+          .map((msg, idx) => (
+            <Paper
+              key={idx}
+              sx={{
+                p: 1,
+                mb: 1,
+                fontSize: 18,
+                bgcolor:
+                  msg.role === "user"
+                    ? "#e3f2fd"
+                    : msg.role === "assistant"
+                    ? "#f3e5f5"
+                    : "#eeeeee",
+              }}
+            >
+              <b style={{ fontSize: 18 }}>
+                {msg.role === "user"
+                  ? "You"
                   : msg.role === "assistant"
-                  ? "#f3e5f5"
-                  : "#eeeeee",
-            }}
-          >
-            <b style={{ fontSize: 18 }}>
-              {msg.role === "user"
-                ? "You"
-                : msg.role === "assistant"
-                ? "LLM"
-                : "System"}
-              :
-            </b>{" "}
-            {msg.content}
-          </Paper>
-        ))}
+                  ? "LLM"
+                  : "System"}
+                :
+              </b>{" "}
+              {(msg.role === "assistant"
+                ? msg.content.split("</think>")[1]
+                : "\n\n".concat(msg.content)
+              )
+                .split("\n")
+                .map((line, i) => {
+                  // Replace **text** with <b>text</b>
+                  const parts = line.split(/(\*\*[^*]+\*\*)/g);
+                  return (
+                    <React.Fragment key={i}>
+                      {parts.map((part, j) =>
+                        part.startsWith("**") && part.endsWith("**") ? (
+                          <b key={j}>{part.slice(2, -2)}</b>
+                        ) : (
+                          <React.Fragment key={j}>{part}</React.Fragment>
+                        )
+                      )}
+                      {i < msg.content.split("\n").length - 1 && <br />}
+                    </React.Fragment>
+                  );
+                })}
+            </Paper>
+          ))}
       </Box>
       <Box
         sx={{

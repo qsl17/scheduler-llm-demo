@@ -41,6 +41,8 @@ const SolveButton: React.FC = () => {
         )?.name,
       },
     }));
+
+    console.log(personList, assignmentList);
     const payload: EventAssignmentSolution = {
       personList,
       assignmentList,

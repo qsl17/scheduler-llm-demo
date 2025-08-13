@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import type { RootState } from "../../stores/store";
 import { BryntumScheduler } from "@bryntum/scheduler-react";
@@ -35,13 +35,11 @@ const MyScheduler: React.FC = () => {
 
   // Fetch manpower on popover open
   useEffect(() => {
-    if (popover) {
-      setLoading(true);
-      ManpowerControllerService.getAll()
-        .then((data) => setManpower(data))
-        .finally(() => setLoading(false));
-    }
-  }, [popover]);
+    setLoading(true);
+    ManpowerControllerService.getAll()
+      .then((data) => setManpower(data))
+      .finally(() => setLoading(false));
+  }, []);
 
   // Handler for event click
   const onEventClick = ({
@@ -77,17 +75,36 @@ const MyScheduler: React.FC = () => {
     )
   );
 
-  // Custom event renderer to show conflicts in red
-  const eventRenderer = ({
-    eventRecord,
-    renderData,
-  }: {
-    eventRecord: any;
-    renderData: any;
-  }) => {
-    renderData.eventColor = eventRecord.conflict ? "red" : "green"; // Apply style to renderData
-    return eventRecord.name;
-  };
+  // Add a key that changes when events or manpower changes
+  const schedulerKey = JSON.stringify(events) + JSON.stringify(manpower);
+
+  // Custom event renderer to show conflicts in red and role mismatches in purple
+  const eventRenderer = useCallback(
+    ({ eventRecord, renderData }: { eventRecord: any; renderData: any }) => {
+      // Find the resource for this event
+      const resource = resources.find((r) => r.id === eventRecord.resourceId);
+      // Check if the assigned person's role matches the resource role
+      const isRoleMismatch =
+        eventRecord.name &&
+        resource &&
+        manpower.length > 0 &&
+        (() => {
+          const person = manpower.find((mp) => mp.name === eventRecord.name);
+          return (
+            person && resource.name && !person.roles?.includes(resource.name)
+          );
+        })();
+      if (isRoleMismatch) {
+        renderData.eventColor = "purple";
+      } else if (eventRecord.conflict) {
+        renderData.eventColor = "red";
+      } else {
+        renderData.eventColor = "green";
+      }
+      return eventRecord.name;
+    },
+    [manpower, resources, events]
+  );
 
   return (
     <Box sx={{ height: "1000px", position: "relative" }}>
@@ -106,7 +123,7 @@ const MyScheduler: React.FC = () => {
         onEventClick={onEventClick}
         eventRenderer={eventRenderer}
       />
-      <ChatLLM />
+      <ChatLLM schedulerRef={schedulerRef} />
       {popover && (
         <Paper
           elevation={6}
