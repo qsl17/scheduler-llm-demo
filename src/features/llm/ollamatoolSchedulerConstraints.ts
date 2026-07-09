@@ -26,7 +26,10 @@ const constraintSettings: {
 // Utility to convert to 'Xhard/Ysoft' string format
 function toStringWeights(settings: typeof constraintSettings) {
   return Object.fromEntries(
-    Object.entries(settings).map(([k, v]) => [k, `${v.hard}hard/${v.soft}soft`])
+    Object.entries(settings).map(([k, v]) => [
+      k,
+      `${v.hard}hard/${v.soft}soft`,
+    ]),
   );
 }
 
@@ -74,37 +77,37 @@ function makeSoftTool(name: string, desc: string) {
 // );
 const setNoOverlapHardWeightTool = makeHardTool(
   "NoOverlap",
-  "no-overlap constraint"
+  "no-overlap constraint",
 );
 const setNoOverlapSoftWeightTool = makeSoftTool(
   "NoOverlap",
-  "no-overlap constraint"
+  "no-overlap constraint",
 );
 const setNoBackToBackHardWeightTool = makeHardTool(
   "NoBackToBack",
-  "no-back-to-back constraint"
+  "no-back-to-back constraint",
 );
 const setNoBackToBackSoftWeightTool = makeSoftTool(
   "NoBackToBack",
-  "no-back-to-back constraint"
+  "no-back-to-back constraint",
 );
 // const setBalanceHardWeightTool = makeHardTool("Balance", "balance constraint");
 const setBalanceSoftWeightTool = makeSoftTool("Balance", "balance constraint");
 const setAffinityGroupOverlapHardWeightTool = makeHardTool(
   "AffinityGroupOverlap",
-  "affinity group overlap constraint"
+  "affinity group overlap constraint",
 );
 const setAffinityGroupOverlapSoftWeightTool = makeSoftTool(
   "AffinityGroupOverlap",
-  "affinity group overlap constraint"
+  "affinity group overlap constraint",
 );
 const setAversionGroupOverlapHardWeightTool = makeHardTool(
   "AversionGroupOverlap",
-  "aversion group overlap constraint"
+  "aversion group overlap constraint",
 );
 const setAversionGroupOverlapSoftWeightTool = makeSoftTool(
   "AversionGroupOverlap",
-  "aversion group overlap constraint"
+  "aversion group overlap constraint",
 );
 
 const solveSchedulerTool = {
@@ -118,17 +121,6 @@ const solveSchedulerTool = {
     },
   },
 };
-
-// const getConstraintWeightsTool = {
-//   type: "function",
-//   function: {
-//     name: "constraintWeights",
-//     description: "Gets the current constraint weights for the scheduler.",
-//     parameters: {
-//       type: "object",
-//     },
-//   },
-// };
 
 // --- Tool implementations ---
 const availableFunctions = {
@@ -254,7 +246,7 @@ export async function optimizeSchedulerWithLLMConstraints(
         Use point form to share the constraints that you have set.`,
     },
   ],
-  model = "qwen3:8b"
+  model = "qwen3:8b",
 ) {
   // Set assignmentListCache at module level
   assignmentListCache = assignmentList;
@@ -262,25 +254,19 @@ export async function optimizeSchedulerWithLLMConstraints(
     model,
     messages,
     tools: [
-      // setRoleMatchHardWeightTool,
-      // setRoleMatchSoftWeightTool,
       setNoOverlapHardWeightTool,
       setNoOverlapSoftWeightTool,
       setNoBackToBackHardWeightTool,
       setNoBackToBackSoftWeightTool,
-      // setBalanceHardWeightTool,
       setBalanceSoftWeightTool,
       setAffinityGroupOverlapHardWeightTool,
       setAffinityGroupOverlapSoftWeightTool,
       setAversionGroupOverlapHardWeightTool,
       setAversionGroupOverlapSoftWeightTool,
       solveSchedulerTool,
-      // getConstraintWeightsTool,
     ],
   });
-  // ...handle tool calls and chain as in your main agent...
 
-  console.log("LLM initial response:", response.message.content);
   messages.push(response.message);
   if (response.message.tool_calls && response.message.tool_calls.length > 0) {
     if (
@@ -303,7 +289,7 @@ export async function optimizeSchedulerWithLLMConstraints(
       const functionToCall = availableFunctions[fnName];
       if (!functionToCall) {
         console.warn(
-          `Function ${tool.function.name} not found in availableFunctions.`
+          `Function ${tool.function.name} not found in availableFunctions.`,
         );
         continue;
       }
